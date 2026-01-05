@@ -5,6 +5,10 @@ import requests
 import json
 import pandas as pd
 
+# Mantener sesión de requests para no perder el historial (cookies)
+if 'http' not in st.session_state:
+    st.session_state.http = requests.Session()
+
 # Configuración de la página∫
 st.set_page_config(
     page_title="Calcu-Streamlit-App",
@@ -15,6 +19,7 @@ st.set_page_config(
 # Configuración del backend
 #BACKEND_URL = "http://localhost:8000"  # Cambia si tu backend está en otro puerto
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
+API_AUTH_KEY = os.environ.get("API_AUTH_KEY", "clave-api-frontend-56789")
 
 # Título de la aplicación
 st.title("🚀 Calcu-Streamlit-App")
@@ -59,28 +64,28 @@ elif pagina == "🧮 Calculadora":
         
         if st.button("Calcular", type="primary", use_container_width=True):
             try:
+                headers = {"x-api-key": API_AUTH_KEY}
                 payload = {
                     "a": a,
                     "b": b,
                     "operacion": operacion
                 }
                 
-                response = requests.post(
-                    f"{BACKEND_URL}/calcular",
-                    json=payload
-                )
-                
-                if response.status_code == 200:
-                    resultado = response.json()
+                # res = st.session_state.session.post(f"{BACKEND_URL}/calcular", json=payload, headers=headers)
+                res = st.session_state.http.post(f"{BACKEND_URL}/calcular", json=payload, headers=headers)
+
+                if res.status_code == 200:
+                    st.success(f"Resultado: {res.json()['resultado']}")
                     
-                    # Mostrar resultado
-                    st.success(f"✅ Resultado: {resultado['resultado']}")
-                    
-                    # Mostrar detalles en un expander
-                    with st.expander("Ver detalles de la operación"):
-                        st.json(resultado)
+                    # Mostrar historial actualizado
+                    # h_res = st.session_state.session.get(f"{BACKEND_URL}/historial", headers=headers)
+                    h_res = st.session_state.http.get(f"{BACKEND_URL}/historial", headers=headers)
+                    st.write("### Historial Reciente")
+                    for item in h_res.json()["historial"]:
+                        st.text(item)
+
                 else:
-                    st.error(f"Error: {response.json()['detail']}")
+                    st.error(f"Error: {res.json()['detail']}")
                     
             except Exception as e:
                 st.error(f"Error al conectar con el backend: {e}")
