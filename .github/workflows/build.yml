@@ -6,21 +6,47 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+name: Build and Analysis - Frontend
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
 env:
   APP_VERSION: "1.0.0"
 
 jobs:
   sonarqube:
-    name: SonarQube
+    name: SonarQube Analysis
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 0 
+
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 #v6
+        uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  build-and-push:
+    name: Build Docker Image
+    needs: sonarqube
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Necesario para emular la arquitectura ARM64 de tu servidor
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -33,7 +59,8 @@ jobs:
         with:
           context: .
           push: true
-          # Construimos el nombre de la imagen aquí usando el secreto
+          # IMPORTANTE: Esto soluciona el error en tu VM Debian aarch64
+          platforms: linux/arm64
           tags: |
             ${{ secrets.DOCKER_USER }}/calcu-streamlit-app-frontend:${{ env.APP_VERSION }}
             ${{ secrets.DOCKER_USER }}/calcu-streamlit-app-frontend:latest
