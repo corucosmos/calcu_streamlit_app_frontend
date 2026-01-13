@@ -105,4 +105,4 @@ except requests.exceptions.ConnectionError:
     st.info("Ejecuta el backend con: `uvicorn backend.api:app --reload`")
 
 st.markdown("---")
-st.info("V2")
+st.info("V1")
